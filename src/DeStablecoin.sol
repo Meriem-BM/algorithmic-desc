@@ -14,10 +14,7 @@ contract DeStablecoin is ERC20Burnable, Ownable {
     error BalanceMustBeZero(uint256 remaining);
     error InsufficientBalance(uint256 balance, uint256 amount);
 
-    function mint(
-        address _to,
-        uint256 _amount
-    ) external onlyOwner returns (bool) {
+    function mint(address _to, uint256 _amount) external onlyOwner returns (bool) {
         if (_to == address(0)) revert InvalidAddress();
         if (_amount == 0) revert AmountMustBeGreaterThanZero();
 
