@@ -17,5 +17,4 @@ contract DeStablecoinTest is Test {
         assertEq(deStablecoin.balanceOf(address(this)), 1000);
         assertEq(deStablecoin.totalSupply(), 1000);
     }
-
 }
