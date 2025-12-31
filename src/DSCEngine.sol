@@ -20,6 +20,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__TokenAddressesAndPriceFeedsLengthMismatch();
     error DSCEngine__NotAllowedToken();
     error DSCEngine__TransferFailed();
+    error DSCEngine__HealthFactorIsBroken();
 
     // --- State Variables ---
     mapping(address token => address priceFeed) private s_priceFeeds; // token => price feed
@@ -34,6 +35,7 @@ contract DSCEngine is ReentrancyGuard {
     uint256 private constant PRECISION = 1e18;
     uint256 private constant LIQUIDATION_THRESHOLD = 50;
     uint256 private constant LIQUIDATION_PRECISION = 100;
+    uint256 private constant MIN_HEALTH_FACTOR = 1;
 
     // --- Events ---
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
@@ -162,6 +164,7 @@ contract DSCEngine is ReentrancyGuard {
     function _revertIfHealthFactorIsBroken(address _account) private view {
         // 1. Get the health factor
         // 2. If the health factor is broken, revert
+        if (_healthFactor(_account) < MIN_HEALTH_FACTOR) revert DSCEngine__HealthFactorIsBroken();
     }
 
     // --- Public & External View Functions ---

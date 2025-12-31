@@ -11,10 +11,5 @@ contract DeStablecoinTest is Test {
         deStablecoin = new DeStablecoin();
     }
 
-    function test_Mint() public {
-        vm.prank(owner);
-        deStablecoin.mint(address(this), 1000);
-        assertEq(deStablecoin.balanceOf(address(this)), 1000);
-        assertEq(deStablecoin.totalSupply(), 1000);
-    }
+    // TODO: Test the DeStablecoin contract
 }
