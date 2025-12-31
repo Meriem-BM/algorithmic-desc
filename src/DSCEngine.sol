@@ -21,6 +21,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__NotAllowedToken();
     error DSCEngine__TransferFailed();
     error DSCEngine__HealthFactorIsBroken();
+    error DSCEngine__MintFailed();
 
     // --- State Variables ---
     mapping(address token => address priceFeed) private s_priceFeeds; // token => price feed
@@ -106,8 +107,11 @@ contract DSCEngine is ReentrancyGuard {
     function mintDsc(uint256 _amountDscToMint) external moreThanZero(_amountDscToMint) nonReentrant {
         // Using interface - we know exactly what functions are available
         s_userDscMinted[msg.sender] += _amountDscToMint;
-        bool success = s_dsc.mint(msg.sender, _amountDscToMint);
-        if (!success) revert DSCEngine__TransferFailed();
+
+        // 1. Check if the health factor is broken
+        _revertIfHealthFactorIsBroken(msg.sender);
+        bool minted = s_dsc.mint(msg.sender, _amountDscToMint);
+        if (!minted) revert DSCEngine__MintFailed();
         emit DscMinted(msg.sender, _amountDscToMint);
     }
 
