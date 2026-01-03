@@ -68,9 +68,11 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     // --- external functions ---
-    function depositCollateralAndMintDsc(uint256 _amountCollateral, uint256 _amountDscToMint) external {
+    function depositCollateralAndMintDsc(address _collateral, uint256 _amountCollateral, uint256 _amountDscToMint) external {
         // 1. Deposit the collateral
         // 2. Mint the DSC
+        depositCollateral(_collateral, _amountCollateral);
+        mintDsc(_amountDscToMint);
     }
 
     /**
@@ -79,7 +81,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param _amountCollateral The amount of collateral to deposit
      */
     function depositCollateral(address _collateral, uint256 _amountCollateral)
-        external
+        public
         moreThanZero(_amountCollateral)
         isAllowedToken(_collateral)
         nonReentrant
@@ -93,6 +95,7 @@ contract DSCEngine is ReentrancyGuard {
     function redeemCollateralForDsc(uint256 _amountCollateral, uint256 _amountDscToBurn) external {
         // 1. Burn the DSC
         // 2. Redeem the collateral
+
     }
 
     function redeemCollateral(address _collateral, uint256 _amountCollateral) external {
@@ -104,7 +107,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param _amountDscToMint The amount of DSC to mint
      * @notice Must have more than 0 DSC to mint
      */
-    function mintDsc(uint256 _amountDscToMint) external moreThanZero(_amountDscToMint) nonReentrant {
+    function mintDsc(uint256 _amountDscToMint) public moreThanZero(_amountDscToMint) nonReentrant {
         // Using interface - we know exactly what functions are available
         s_userDscMinted[msg.sender] += _amountDscToMint;
 
