@@ -20,7 +20,7 @@ contract HelperConfig is Script {
     uint8 private constant SEPOLIA_WBTC_DECIMALS = 8;
     int256 private constant SEPOLIA_WETH_USD_PRICE = 2000 * 10 ** 18;
     int256 private constant SEPOLIA_WBTC_USD_PRICE = 100000 * 10 ** 8;
-    address private constant DEFAULT_ANVIL_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    string private constant DEFAULT_ANVIL_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     constructor() {
         if (block.chainid == 11155111) {
