@@ -35,7 +35,7 @@ contract DSCEngineInvariants is StdInvariant, Test {
         priceFeedAddresses[1] = wbtcUsdPriceFeed;
 
         DeployDSC deployDSC = new DeployDSC();
-        (deStablecoin, dscEngine) = deployDSC.run();
+        (deStablecoin, dscEngine, helperConfig) = deployDSC.run();
 
         // Create handler for fuzzing
         handler = new Handler(dscEngine, deStablecoin, weth, wbtc);

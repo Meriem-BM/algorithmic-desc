@@ -5,7 +5,6 @@ import {DeStablecoin} from "./DeStablecoin.sol";
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import {IDSCEngine} from "./interfaces/IDSCEngine.sol";
 
 /**
  * @title DSCEngine
@@ -182,10 +181,13 @@ contract DSCEngine is ReentrancyGuard {
         // Figure out how much collateral to recover based on how much burnt
 
         // Validate user has enough collateral
-        if (s_collateralDeposited[_userToBeLiquidated][_collateralAddress] < tokenAmountFromDebtCovered + bonusCollateral) {
+        if (
+            s_collateralDeposited[_userToBeLiquidated][_collateralAddress]
+                < tokenAmountFromDebtCovered + bonusCollateral
+        ) {
             revert DSCEngine__NotEnoughCollateral();
         }
-        
+
         // Validate liquidator has enough DSC
         if (IERC20(address(i_dsc)).balanceOf(msg.sender) < _debtToCover) {
             revert DSCEngine__NotEnoughCollateral();
@@ -280,16 +282,16 @@ contract DSCEngine is ReentrancyGuard {
     function _getUsdValue(address _token, uint256 _amount) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[_token]);
         (, int256 price,, uint256 updatedAt, uint80 answeredInRound) = priceFeed.latestRoundData();
-        
+
         // Validate price is positive
         if (price <= 0) revert DSCEngine__InvalidPriceFeed();
-        
+
         // Validate price is not stale (assuming 3 hours = 10800 seconds)
         if (block.timestamp - updatedAt > 3 hours) revert DSCEngine__InvalidPriceFeed();
-        
+
         // Validate round is complete
         if (answeredInRound == 0) revert DSCEngine__InvalidPriceFeed();
-        
+
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * _amount) / PRECISION;
     }
 
@@ -339,6 +341,10 @@ contract DSCEngine is ReentrancyGuard {
         return s_collateralDeposited[_account][_token];
     }
 
+    function getAccountDebtValue(address _account) external view returns (uint256) {
+        return s_userDscMinted[_account];
+    }
+
     function getAccountCollateralValue(address _account) public view returns (uint256 totalCollateralValueInUsd) {
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
             address token = s_collateralTokens[i];
@@ -351,16 +357,16 @@ contract DSCEngine is ReentrancyGuard {
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 price,, uint256 updatedAt, uint80 answeredInRound) = priceFeed.latestRoundData();
-        
+
         // Validate price is positive
         if (price <= 0) revert DSCEngine__InvalidPriceFeed();
-        
+
         // Validate price is not stale (assuming 3 hours = 10800 seconds)
         if (block.timestamp - updatedAt > 3 hours) revert DSCEngine__InvalidPriceFeed();
-        
+
         // Validate round is complete
         if (answeredInRound == 0) revert DSCEngine__InvalidPriceFeed();
-        
+
         // $100e18 USD Debt
         // 1 ETH = 2000 USD
         // The returned value from Chainlink will be 2000 * 1e8

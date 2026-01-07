@@ -21,13 +21,10 @@ contract DSCEngineTest is Test {
 
     function setUp() public {
         helperConfig = new HelperConfig();
-        (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc,) = helperConfig.activeNetworkConfig();
-
-        address[] memory tokenAddresses = [weth, wbtc];
-        address[] memory priceFeedAddresses = [wethUsdPriceFeed, wbtcUsdPriceFeed];
+        (,, weth, wbtc) = helperConfig.activeNetworkConfig();
 
         deployDSC = new DeployDSC();
-        (deStablecoin, dscEngine) = deployDSC.run();
+        (deStablecoin, dscEngine, helperConfig) = deployDSC.run();
     }
 
     // ============ Price Feed Tests ============
@@ -93,23 +90,23 @@ contract DSCEngineTest is Test {
         // Health factor = (collateral * threshold * precision) / debt
         // = (2000e18 * 50/100 * 1e18) / 1000e18
         // = (1000e18 * 1e18) / 1000e18 = 1e18 (health factor of 1.0)
-        
+
         address user = address(1);
         uint256 collateralAmount = 1e18; // 1 WETH
         uint256 debtAmount = 1000e18; // $1000 DSC
-        
+
         // Get WETH token and give user some tokens
         IERC20 wethToken = IERC20(weth);
         vm.startPrank(weth);
         // For mock tokens, we can use the mint function if available
         // Or transfer from the deployer
         vm.stopPrank();
-        
+
         // Calculate expected values
         uint256 expectedCollateralValue = 2000e18; // $2000
         uint256 expectedHealthFactor = (expectedCollateralValue * 50 / 100 * 1e18) / debtAmount;
         // Expected: (2000e18 * 0.5 * 1e18) / 1000e18 = 1e18
-        
+
         // Note: This test verifies the calculation logic
         // Full integration test would require actual deposit and mint
         assertEq(expectedHealthFactor, 1e18);
@@ -162,6 +159,8 @@ contract DSCEngineTest is Test {
         assertGt(expectedTotal, wethValue);
         assertGt(expectedTotal, wbtcValue);
     }
+
+    // ============ Revert Tests ============
 
     function test_RevertIfTokenAddressesAndPriceFeedsLengthMismatch() public {
         vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedsLengthMismatch.selector);
