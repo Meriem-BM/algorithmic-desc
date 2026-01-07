@@ -9,7 +9,7 @@ contract HelperConfig is Script {
     NetworkConfig public activeNetworkConfig;
 
     uint8 public constant DECIMALS = 8;
-    int256 public constant SEPOLIA_WETH_USD_PRICE = 2000e18;
+    int256 public constant SEPOLIA_WETH_USD_PRICE = 2000e8;
     int256 public constant SEPOLIA_WBTC_USD_PRICE = 1000e8;
 
     struct NetworkConfig {
@@ -20,7 +20,7 @@ contract HelperConfig is Script {
         uint256 deployerKey;
     }
 
-    uint256 public constant DEFAULT_ANVIL_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    uint256 public DEFAULT_ANVIL_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     constructor() {
         if (block.chainid == 11_155_111) {
@@ -40,14 +40,14 @@ contract HelperConfig is Script {
         });
     }
 
-    function getOrCreateAnvilNetworkConfig() public view returns (NetworkConfig memory) {
+    function getOrCreateAnvilNetworkConfig() public returns (NetworkConfig memory) {
         if (activeNetworkConfig.wethUsdPriceFeed != address(0)) {
             return activeNetworkConfig;
         }
 
         vm.startBroadcast();
         MockV3Aggregator wethUsdPriceFeed = new MockV3Aggregator(DECIMALS, SEPOLIA_WETH_USD_PRICE);
-        ERC20Mock wethMock = new ERC20Mock("WETH", "WETH", msg.sender, 1000e18);
+        ERC20Mock wethMock = new ERC20Mock("WETH", "WETH", msg.sender, 1000e8);
 
         MockV3Aggregator wbtcUsdPriceFeed = new MockV3Aggregator(DECIMALS, SEPOLIA_WBTC_USD_PRICE);
         ERC20Mock wbtcMock = new ERC20Mock("WBTC", "WBTC", msg.sender, 1000e8);
