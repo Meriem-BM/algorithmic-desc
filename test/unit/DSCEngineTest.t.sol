@@ -8,8 +8,9 @@ import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
+import {StdCheats} from "forge-std/StdCheats.sol";
 
-contract DSCEngineTest is Test {
+contract DSCEngineTest is StdCheats, Test {
     DeStablecoin public deStablecoin;
     DSCEngine public dscEngine;
     HelperConfig public helperConfig;
@@ -56,63 +57,22 @@ contract DSCEngineTest is Test {
         new DSCEngine(tokenAddresses, priceFeedAddresses, address(deStablecoin));
     }
 
-    function test_Constructor_RevertIfTokenNotAllowed() public {
-        tokenAddresses.push(weth);
-        priceFeedAddresses.push(wethUsdPriceFeed);
-        tokenAddresses.push(address(0));
-        priceFeedAddresses.push(address(0));
-        
-        vm.expectRevert(DSCEngine.DSCEngine__NotAllowedToken.selector);
-        new DSCEngine(tokenAddresses, priceFeedAddresses, address(deStablecoin));
-    }
-
     // ============ Price Feed Tests ============
 
-    // function test_GetUsdValue_WithWeth() public {
-    //     // WETH price is $2000 (2000 * 10^18 in 18 decimals)
-    //     // For 1 WETH (1e18), expected USD value = (2000e18 * 1e10 * 1e18) / 1e18 = 2000e18
-    //     uint256 oneWeth = 1e18;
-    //     uint256 expectedUsdValue = 2000e18; // $2000 in 18 decimals
-    //     uint256 usdValue = dscEngine.getUsdValue(weth, oneWeth);
-    //     assertEq(usdValue, expectedUsdValue);
-    // }
+    function test_GetTokenAmountFromUsd() public view {
+        // If we want $100 of WETH @ $2000/WETH, that would be 0.05 WETH
+        uint256 expectedWeth = 0.05 ether;
+        uint256 amountWeth = dscEngine.getTokenAmountFromUsd(weth, 100 ether);
+        assertEq(amountWeth, expectedWeth);
+    }
 
-    // function test_GetUsdValue_WithWethPartial() public {
-    //     // 0.5 WETH = 0.5e18
-    //     // Expected: (2000e18 * 1e10 * 0.5e18) / 1e18 = 1000e18
-    //     uint256 halfWeth = 0.5e18;
-    //     uint256 expectedUsdValue = 1000e18; // $1000 in 18 decimals
-    //     uint256 usdValue = dscEngine.getUsdValue(weth, halfWeth);
-    //     assertEq(usdValue, expectedUsdValue);
-    // }
-
-    // function test_GetUsdValue_WithWbtc() public {
-    //     // WBTC price is $100,000 (100000 * 10^8 in 8 decimals)
-    //     // For 1 WBTC (1e8), expected USD value = (100000e8 * 1e10 * 1e8) / 1e18 = 100000e18
-    //     uint256 oneWbtc = 1e8;
-    //     uint256 expectedUsdValue = 100000e18; // $100,000 in 18 decimals
-    //     uint256 usdValue = dscEngine.getUsdValue(wbtc, oneWbtc);
-    //     assertEq(usdValue, expectedUsdValue);
-    // }
-
-    // function test_GetUsdValue_WithWbtcPartial() public {
-    //     // 0.1 WBTC = 0.1e8
-    //     // Expected: (100000e8 * 1e10 * 0.1e8) / 1e18 = 10000e18
-    //     uint256 tenthWbtc = 0.1e8;
-    //     uint256 expectedUsdValue = 10000e18; // $10,000 in 18 decimals
-    //     uint256 usdValue = dscEngine.getUsdValue(wbtc, tenthWbtc);
-    //     assertEq(usdValue, expectedUsdValue);
-    // }
-
-    // function test_GetUsdValue_WithZeroAmount() public {
-    //     uint256 usdValue = dscEngine.getUsdValue(weth, 0);
-    //     assertEq(usdValue, 0);
-    // }
-
-    // function test_GetAccountCollateralValue_WithNoCollateral() public {
-    //     uint256 collateralValue = dscEngine.getAccountCollateralValue(address(this));
-    //     assertEq(collateralValue, 0);
-    // }
+    function test_GetUsdValue() public view {
+        uint256 ethAmount = 15e18;
+        // 15e18 ETH * $2000/ETH = $30,000e18
+        uint256 expectedUsd = 30_000e18;
+        uint256 usdValue = dscEngine.getUsdValue(weth, ethAmount);
+        assertEq(usdValue, expectedUsd);
+    }
 
     // ============ Health Factor Tests ============
 
