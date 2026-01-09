@@ -7,34 +7,32 @@ import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 contract DeStablecoin is ERC20Burnable, Ownable {
     constructor() ERC20("DeStablecoin", "DSC") Ownable(msg.sender) {}
 
-    // Custom Errors
-    error InvalidAddress();
-    error AmountMustBeGreaterThanZero();
-    error TotalSupplyExceeded(uint256 requested, uint256 maxSupply);
-    error BalanceMustBeZero(uint256 remaining);
-    error InsufficientBalance(uint256 balance, uint256 amount);
+    // =========================================== Errors ===========================================
+    error DeStablecoin__InvalidAddress();
+    error DeStablecoin__AmountMustBeGreaterThanZero();
+    error DeStablecoin__InsufficientBalance(uint256 balance, uint256 amount);
+    error DeStablecoin__BurnAmountExceedsBalance(uint256 remaining);
 
-    function mint(address _to, uint256 _amount) external onlyOwner returns (bool) {
-        if (_to == address(0)) revert InvalidAddress();
-        if (_amount == 0) revert AmountMustBeGreaterThanZero();
+    // =========================================== Modifiers ===========================================
+    modifier moreThanZero(uint256 _amount) {
+        if (_amount <= 0) revert DeStablecoin__AmountMustBeGreaterThanZero();
+        _;
+    }
 
-        uint256 newBalance = balanceOf(_to) + _amount;
-        if (newBalance > totalSupply()) {
-            revert TotalSupplyExceeded(newBalance, totalSupply());
-        }
-
+    // =========================================== Functions ===========================================
+    function mint(address _to, uint256 _amount) external onlyOwner moreThanZero(_amount) returns (bool) {
+        if (_to == address(0)) revert DeStablecoin__InvalidAddress();
         _mint(_to, _amount);
-
         return true;
     }
 
-    function burn(uint256 _amount) public override onlyOwner {
+    function burn(uint256 _amount) public override onlyOwner moreThanZero(_amount) {
         uint256 balance = balanceOf(msg.sender);
 
-        if (balance < _amount) revert InsufficientBalance(balance, _amount);
+        if (balance < _amount) revert DeStablecoin__InsufficientBalance(balance, _amount);
 
         uint256 remaining = balance - _amount;
-        if (remaining != 0) revert BalanceMustBeZero(remaining);
+        if (balance < _amount) revert DeStablecoin__BurnAmountExceedsBalance(remaining);
 
         super.burn(_amount);
     }
