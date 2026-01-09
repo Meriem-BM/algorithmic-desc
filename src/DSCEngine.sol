@@ -15,12 +15,14 @@ import {AggregatorV3Interface} from "@chainlink/contracts/v0.8/shared/interfaces
 
 contract DSCEngine is ReentrancyGuard {
     // =========================================== Errors ===========================================
-    error DSCEngine__NotEnoughCollateral();
     error DSCEngine__TokenAddressesAndPriceFeedsLengthMismatch();
     error DSCEngine__NotAllowedToken();
     error DSCEngine__TransferFailed();
+    error DSCEngine__NotEnoughCollateral();
+    error DSCEngine__InsufficientDscBalance(address user, uint256 amount);
     error DSCEngine__HealthFactorIsBroken();
     error DSCEngine__HealthFactorIsOk();
+    error DSCEngine__AmountMustBeGreaterThanZero();
     error DSCEngine__MintFailed();
     error DSCEngine__InvalidPriceFeed();
 
@@ -47,7 +49,7 @@ contract DSCEngine is ReentrancyGuard {
 
     // =========================================== Modifiers ===========================================
     modifier moreThanZero(uint256 _amount) {
-        if (_amount <= 0) revert DSCEngine__NotEnoughCollateral();
+        if (_amount <= 0) revert DSCEngine__AmountMustBeGreaterThanZero();
         _;
     }
 
@@ -190,7 +192,7 @@ contract DSCEngine is ReentrancyGuard {
 
         // Validate liquidator has enough DSC
         if (IERC20(address(i_dsc)).balanceOf(msg.sender) < _debtToCover) {
-            revert DSCEngine__NotEnoughCollateral();
+            revert DSCEngine__InsufficientDscBalance(msg.sender, _debtToCover);
         }
 
         _redeemCollateral(
