@@ -9,6 +9,8 @@ import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
+import {MockFailedTransfer} from "../mocks/MockFailedTransfer.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract DSCEngineTest is StdCheats, Test {
     DeStablecoin public deStablecoin;
@@ -74,140 +76,138 @@ contract DSCEngineTest is StdCheats, Test {
         assertEq(usdValue, expectedUsd);
     }
 
-    // ============ Health Factor Tests ============
+    // ============ Deposit Collateral Tests ============
 
-    // function test_HealthFactor_WithNoCollateralAndNoDebt() public {
-    //     // Test initial state - no collateral, no debt
-    //     uint256 collateralValue = dscEngine.getAccountCollateralValue(address(this));
-    //     uint256 debtValue = dscEngine.getAccountDebtValue(address(this));
-    //     assertEq(collateralValue, 0);
-    //     assertEq(debtValue, 0);
-    // }
+    function test_RevertsIfTransferFromFails() public {
+        // Step 1: Create a mock token that always fails on transferFrom
+        MockFailedTransfer mockCollateral = new MockFailedTransfer();
 
-    // function test_HealthFactor_Calculation_WithCollateralAndDebt() public {
-    //     // Setup: Deposit 1 WETH ($2000) and mint $1000 DSC
-    //     // Health factor = (collateral * threshold * precision) / debt
-    //     // = (2000e18 * 50/100 * 1e18) / 1000e18
-    //     // = (1000e18 * 1e18) / 1000e18 = 1e18 (health factor of 1.0)
+        // Step 2: Set up token and price feed arrays for DSCEngine constructor
+        tokenAddresses = [address(mockCollateral)];
+        priceFeedAddresses = [wethUsdPriceFeed];
 
-    //     address user = address(1);
-    //     uint256 collateralAmount = 1e18; // 1 WETH
-    //     uint256 debtAmount = 1000e18; // $1000 DSC
+        // Step 3: Create a new DSCEngine that accepts the mock token as collateral
+        DSCEngine mockDscEngine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(deStablecoin));
 
-    //     // Get WETH token and give user some tokens
-    //     IERC20 wethToken = IERC20(weth);
-    //     vm.startPrank(weth);
-    //     // For mock tokens, we can use the mint function if available
-    //     // Or transfer from the deployer
-    //     vm.stopPrank();
+        // Step 4: Mint tokens to the user (they need tokens to attempt deposit)
+        mockCollateral.mint(user, amountCollateral);
 
-    //     // Calculate expected values
-    //     uint256 expectedCollateralValue = 2000e18; // $2000
-    //     uint256 expectedHealthFactor = (expectedCollateralValue * 50 / 100 * 1e18) / debtAmount;
-    //     // Expected: (2000e18 * 0.5 * 1e18) / 1000e18 = 1e18
+        // Step 5: User approves the engine to spend their tokens
+        vm.prank(user);
+        mockCollateral.approve(address(mockDscEngine), amountCollateral);
 
-    //     // Note: This test verifies the calculation logic
-    //     // Full integration test would require actual deposit and mint
-    //     assertEq(expectedHealthFactor, 1e18);
-    // }
+        // Step 6: User attempts to deposit collateral, but transferFrom will fail
+        // The MockFailedTransfer always returns false, so depositCollateral should revert
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__TransferFailed.selector));
+        mockDscEngine.depositCollateral(address(mockCollateral), amountCollateral);
+    }
 
-    // function test_HealthFactor_HealthyPosition() public {
-    //     // Healthy position: 2x collateral to debt ratio
-    //     // Collateral: $4000, Debt: $1000
-    //     // Health factor = (4000e18 * 0.5 * 1e18) / 1000e18 = 2e18 (2.0)
-    //     uint256 collateralValue = 4000e18;
-    //     uint256 debtValue = 1000e18;
-    //     uint256 expectedHealthFactor = (collateralValue * 50 / 100 * 1e18) / debtValue;
-    //     assertEq(expectedHealthFactor, 2e18);
-    // }
+    function test_RevertIfCollateralZero() public {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dscEngine), amountCollateral);
 
-    // function test_HealthFactor_UnhealthyPosition() public {
-    //     // Unhealthy position: Less than 1x collateral to debt ratio
-    //     // Collateral: $1000, Debt: $1000
-    //     // Health factor = (1000e18 * 0.5 * 1e18) / 1000e18 = 0.5e18 (0.5)
-    //     uint256 collateralValue = 1000e18;
-    //     uint256 debtValue = 1000e18;
-    //     uint256 expectedHealthFactor = (collateralValue * 50 / 100 * 1e18) / debtValue;
-    //     assertEq(expectedHealthFactor, 0.5e18);
-    //     // Health factor < 1e18 means position can be liquidated
-    //     assertLt(expectedHealthFactor, 1e18);
-    // }
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__AmountMustBeGreaterThanZero.selector));
+        dscEngine.depositCollateral(weth, 0);
+        vm.stopPrank();
+    }
 
-    // function test_HealthFactor_AtLiquidationThreshold() public {
-    //     // At liquidation threshold: Health factor = 1.0
-    //     // Collateral: $2000, Debt: $1000
-    //     // Health factor = (2000e18 * 0.5 * 1e18) / 1000e18 = 1e18 (1.0)
-    //     uint256 collateralValue = 2000e18;
-    //     uint256 debtValue = 1000e18;
-    //     uint256 expectedHealthFactor = (collateralValue * 50 / 100 * 1e18) / debtValue;
-    //     assertEq(expectedHealthFactor, 1e18);
-    // }
+    function test_RevertWithUnapprovedCollateral() public {
+        ERC20Mock unapprovedCollateral = new ERC20Mock("Unapproved Collateral", "UAC", user, 100 ether);
 
-    // function test_GetAccountDebtValue_WithNoDebt() public {
-    //     uint256 debtValue = dscEngine.getAccountDebtValue(address(this));
-    //     assertEq(debtValue, 0);
-    // }
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dscEngine), amountCollateral);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__NotAllowedToken.selector));
+        dscEngine.depositCollateral(address(unapprovedCollateral), amountCollateral);
+        vm.stopPrank();
+    }
 
-    // function test_GetAccountCollateralValue_MultipleTokens() public {
-    //     // Test that multiple collateral tokens are summed correctly
-    //     // This would require actual deposits, but we can test the logic
-    //     uint256 wethValue = 2000e18; // 1 WETH = $2000
-    //     uint256 wbtcValue = 100000e18; // 1 WBTC = $100,000
-    //     uint256 expectedTotal = wethValue + wbtcValue;
-    //     // Note: Actual test would require deposits
-    //     assertGt(expectedTotal, wethValue);
-    //     assertGt(expectedTotal, wbtcValue);
-    // }
+    modifier depositCollateral() {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dscEngine), amountCollateral);
+        dscEngine.depositCollateral(weth, amountCollateral);
+        vm.stopPrank();
+        _;
+    }
 
-    // ============ Revert Tests ============
+    function test_CanDepositCollateralWithoutMinting() public depositCollateral {
+        uint256 userBalance = deStablecoin.balanceOf(user); 
+        assertEq(userBalance, 0);
+    }
 
-    // function test_RevertIfTokenAddressesAndPriceFeedsLengthMismatch() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedsLengthMismatch.selector);
-    //     new DSCEngine(tokenAddresses, priceFeedAddresses, address(deStablecoin));
-    // }
+    function test_GetAccountInformationAfterDeposit() public depositCollateral {
+        (uint256 totalCollateralValueInUsd, uint256 totalDebtMinted) = dscEngine.getAccountInformation(user);
+        uint256 expectedDipositedValue = dscEngine.getTokenAmountFromUsd(weth, totalCollateralValueInUsd);
+        assertEq(expectedDipositedValue, amountCollateral);
+        assertEq(totalDebtMinted, 0);
+    }
 
-    // function test_RevertIfTokenNotAllowed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__NotAllowedToken.selector);
-    //     dscEngine.depositCollateral(address(0), 100);
-    // }
+    // ============ Deposit and Mint DeStablecoin Tests ============
 
-    // function test_RevertIfTransferFailed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__TransferFailed.selector);
-    //     dscEngine.depositCollateral(address(0), 100);
-    // }
-
-    // function test_RevertIfHealthFactorIsBroken() public {
+    /**
+     * @notice Tests that minting DSC that breaks health factor reverts
+     * @dev Calculates an amount that would break health factor and verifies revert
+     */
+    // function test_RevertsIfMintedDscBreaksHealthFactor() public {
+    //     // Calculate USD value of collateral
+    //     uint256 collateralValueInUsd = dscEngine.getUsdValue(weth, amountCollateral);
+        
+    //     // Calculate an amount to mint that would break health factor
+    //     // Health factor = (collateral * 50%) / debt
+    //     // For health factor < 1, we need debt > collateral * 50%
+    //     // Let's mint 60% of collateral value to ensure health factor breaks
+    //     amountToMint = (collateralValueInUsd * 60) / 100;
+        
+    //     vm.startPrank(user);
+    //     ERC20Mock(weth).approve(address(dscEngine), amountCollateral);
+        
     //     vm.expectRevert(DSCEngine.DSCEngine__HealthFactorIsBroken.selector);
-    //     dscEngine.depositCollateral(address(0), 100);
+    //     dscEngine.depositCollateralAndMintDsc(weth, amountCollateral, amountToMint);
+    //     vm.stopPrank();
     // }
 
-    // function test_RevertIfMintFailed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__MintFailed.selector);
-    //     dscEngine.mintDsc(100);
+    /**
+     * @notice Modifier that deposits collateral and mints DSC for test setup
+     * @dev Sets up a user with collateral deposited and DSC minted
+     */
+    modifier depositedCollateralAndMintedDsc() {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dscEngine), amountCollateral);
+        dscEngine.depositCollateralAndMintDsc(weth, amountCollateral, amountToMint);
+        vm.stopPrank();
+        _;
+    }
+
+    /**
+     * @notice Tests that user can mint DSC after depositing collateral
+     * @dev Verifies the minted DSC amount matches expected value
+     */
+    function test_CanMintWithDepositedCollateral() public depositedCollateralAndMintedDsc {
+        uint256 userBalance = deStablecoin.balanceOf(user);
+        assertEq(userBalance, amountToMint);
+    }
+     
+    // ============ Redeem Collateral Tests ============
+
+    // function test_RevertIfRedeemAmountIsZero() public {
+    //     vm.startPrank(user);
+    //     ERC20Mock(weth).approve(address(dscEngine), amountCollateral);
+    //     dscEngine.depositCollateralAndMintDsc(weth, amountCollateral, amountToMint);
+    //     vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__AmountMustBeGreaterThanZero.selector));
+    //     dscEngine.redeemCollateral(weth, 0);
+    //     vm.stopPrank();
     // }
 
-    // function test_RevertIfBurnFailed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__BurnFailed.selector);
-    //     dscEngine.burnDsc(100);
-    // }
-
-    // function test_RevertIfLiquidationFailed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__LiquidationFailed.selector);
-    //     dscEngine.liquidate(address(0), address(0), 100, 100);
-    // }
-
-    // function test_RevertIfRedeemFailed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__RedeemFailed.selector);
-    //     dscEngine.redeemCollateral(address(0), 100);
-    // }
-
-    // function test_RevertIfRedeemCollateralForDscFailed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__RedeemCollateralForDscFailed.selector);
-    //     dscEngine.redeemCollateralForDsc(100, 100);
-    // }
-
-    // function test_RevertIfDepositCollateralAndMintDscFailed() public {
-    //     vm.expectRevert(DSCEngine.DSCEngine__DepositCollateralAndMintDscFailed.selector);
-    //     dscEngine.depositCollateralAndMintDsc(100, 100);
+    // function test_canRedeemCollateral() public {
+    //     vm.startPrank(user);
+    //     console.log("amountCollateral", amountCollateral);
+    //     uint256 userBalanceBeforeRedeem = dscEngine.getCollateralBalanceOfUser(user, weth);
+    //     console.log("userBalanceBeforeRedeem", userBalanceBeforeRedeem);
+    //     assertEq(userBalanceBeforeRedeem, amountCollateral);
+    //     dscEngine.redeemCollateral(weth, amountCollateral);
+    //     uint256 userBalanceAfterRedeem = dscEngine.getCollateralBalanceOfUser(user, weth);
+    //     console.log("userBalanceAfterRedeem", userBalanceAfterRedeem);
+    //     assertEq(userBalanceAfterRedeem, 0);
+    //     vm.stopPrank();
     // }
 }
