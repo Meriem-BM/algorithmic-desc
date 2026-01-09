@@ -5,15 +5,16 @@ import {ERC20Burnable, ERC20} from "@openzeppelin/contracts/token/ERC20/extensio
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title MockFailedTransferOnly
- * @notice Mock ERC20 token that always fails on transfer but succeeds on transferFrom
- * @dev Useful for testing transfer failure scenarios during redemption in DSCEngine
+ * @title MockFailedTransfer
+ * @notice Mock ERC20 token that always fails on transfer and transferFrom
+ * @dev Useful for testing transfer failure scenarios in DSCEngine
  */
-contract MockFailedTransfer is ERC20Burnable, Ownable {
+contract MockFailedTransferFrom is ERC20Burnable, Ownable {
     error DecentralizedStableCoin__AmountMustBeMoreThanZero();
+    error DecentralizedStableCoin__BurnAmountExceedsBalance();
     error DecentralizedStableCoin__NotZeroAddress();
 
-    constructor() ERC20("MockFailedTransferOnly", "MFTO") Ownable(msg.sender) {}
+    constructor() ERC20("DecentralizedStableCoin", "DSC") Ownable(msg.sender) {}
 
     modifier moreThanZero(uint256 _amount) {
         if (_amount <= 0) {
@@ -39,24 +40,23 @@ contract MockFailedTransfer is ERC20Burnable, Ownable {
 
     /**
      * @notice Always returns false to simulate transfer failure
-     * @dev This simulates redeem failure scenario
      */
     function transfer(
+        address recipient,
+        uint256 amount
+    ) public override returns (bool) {
+        return super.transfer(recipient, amount);
+    }
+
+    /**
+     * @notice Always returns false to simulate transferFrom failure
+     * @dev This is critical for testing depositCollateral which uses transferFrom
+     */
+    function transferFrom(
+        address /*sender*/,
         address /*recipient*/,
         uint256 /*amount*/
     ) public pure override returns (bool) {
         return false;
-    }
-
-    /**
-     * @notice Normal transferFrom that succeeds
-     * @dev This allows deposits to succeed while transfers (redeems) fail
-     */
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public override returns (bool) {
-        return super.transferFrom(sender, recipient, amount);
     }
 }
