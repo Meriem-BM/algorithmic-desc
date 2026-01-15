@@ -27,10 +27,7 @@ contract MockFailedTransferFrom is ERC20Burnable, Ownable {
      * @notice Mint tokens for testing purposes
      * @dev Useful for setting up test balances before testing transfer failures
      */
-    function mint(
-        address _to,
-        uint256 _amount
-    ) external onlyOwner moreThanZero(_amount) returns (bool) {
+    function mint(address _to, uint256 _amount) external onlyOwner moreThanZero(_amount) returns (bool) {
         if (_to == address(0)) {
             revert DecentralizedStableCoin__NotZeroAddress();
         }
@@ -41,10 +38,7 @@ contract MockFailedTransferFrom is ERC20Burnable, Ownable {
     /**
      * @notice Always returns false to simulate transfer failure
      */
-    function transfer(
-        address recipient,
-        uint256 amount
-    ) public override returns (bool) {
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
         return super.transfer(recipient, amount);
     }
 
@@ -53,10 +47,17 @@ contract MockFailedTransferFrom is ERC20Burnable, Ownable {
      * @dev This is critical for testing depositCollateral which uses transferFrom
      */
     function transferFrom(
-        address /*sender*/,
-        address /*recipient*/,
+        address,
+        /*sender*/
+        address,
+        /*recipient*/
         uint256 /*amount*/
-    ) public pure override returns (bool) {
+    )
+        public
+        pure
+        override
+        returns (bool)
+    {
         return false;
     }
 }
