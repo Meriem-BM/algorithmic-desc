@@ -25,6 +25,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__AmountMustBeGreaterThanZero();
     error DSCEngine__MintFailed();
     error DSCEngine__InvalidPriceFeed();
+    error DSCEngine__HealthFactorNotImproved();
 
     // =========================================== State Variables ===========================================
     mapping(address token => address priceFeed) private s_priceFeeds; // token => price feed
@@ -203,7 +204,7 @@ contract DSCEngine is ReentrancyGuard {
         // Verify health factor improved
         uint256 endingUserHealthFactor = _healthFactor(_userToBeLiquidated);
         if (endingUserHealthFactor <= startingUserHealthFactor) {
-            revert DSCEngine__HealthFactorIsBroken();
+            revert DSCEngine__HealthFactorNotImproved();
         }
         _revertIfHealthFactorIsBroken(msg.sender);
     }
