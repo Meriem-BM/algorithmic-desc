@@ -8,14 +8,13 @@ import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
-import {StdCheats} from "forge-std/StdCheats.sol";
 import {MockFailedTransferFrom} from "../mocks/MockFailedTransferFrom.sol";
 import {MockFailedTransfer} from "../mocks/MockFailedTransfer.sol";
 import {MockFailedMintDSC} from "../mocks/MockFailedMintDSC.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/v0.8/tests/MockV3Aggregator.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract DSCEngineTest is StdCheats, Test {
+contract DSCEngineTest is Test {
     DeStablecoin public deStablecoin;
     DSCEngine public dscEngine;
     HelperConfig public helperConfig;

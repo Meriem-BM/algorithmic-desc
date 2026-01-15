@@ -3,9 +3,8 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import {DeStablecoin} from "../../src/DeStablecoin.sol";
-import {StdCheats} from "forge-std/StdCheats.sol";
 
-contract DeStablecoinTest is StdCheats, Test {
+contract DeStablecoinTest is Test {
     DeStablecoin public deStablecoin;
 
     function setUp() public {
